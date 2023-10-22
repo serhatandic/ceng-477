@@ -50,7 +50,7 @@ public:
     Vec3f color;
     double radius;
 
-    Sphere() {}
+    Sphere() = default;
 
     Sphere(const Vec3f &center, const Vec3f &color, double radius) : center(center), color(color), radius(radius) {}
 
@@ -88,18 +88,31 @@ public:
         return -1;
     }
 
-    [[nodiscard]] Vec3f computeColor(const std::vector<Sphere>& spheres) const {
+    [[nodiscard]] Vec3f computeColor(const std::vector<Sphere>& spheres, const Vec3f lightSource) const {
         Vec3f c;
         double minT = 90000;
         double t;
+        Vec3f lightVector, normalVector, interSectionPoint;
 
         for(auto & sphere : spheres){
             t = intersectSphere(sphere);
             if (t < minT && t >= 1){
                 c = sphere.color;
                 minT = t;
+
+                interSectionPoint =  origin + (direction * minT);
+                lightVector = lightSource - interSectionPoint;
+                normalVector = interSectionPoint - sphere.center;
+
+                double dotLN = lightVector.normalized().dot(normalVector.normalized());
+                if (dotLN > 0){
+                    c = c * dotLN;
+                }else{
+                    c.x = c.y = c.z = 0;
+                }
             }
         }
+
         return c;
     }
 
@@ -152,11 +165,12 @@ public:
     }
 
     void renderScene(const std::vector<Sphere>& spheres) {
+        Vec3f light(0, 50, 0);
         for (int j = 0; j < ny; j++) {
             for (int i = 0; i < nx; i++) {
                 Ray myRay = generateRay(i, j);
                 Vec3f pixel = myRay.origin + myRay.direction;
-                Vec3f rayColor = myRay.computeColor(spheres);
+                Vec3f rayColor = myRay.computeColor(spheres, light);
                 image[j][i].x = round(rayColor.x*255);
                 image[j][i].y = round(rayColor.y*255);
                 image[j][i].z = round(rayColor.z*255);
