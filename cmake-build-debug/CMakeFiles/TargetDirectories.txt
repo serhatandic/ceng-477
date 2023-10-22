@@ -1,0 +1,3 @@
+/Users/serhatandic/Desktop/projects/c:c++/cmake-build-debug/CMakeFiles/c_c__.dir
+/Users/serhatandic/Desktop/projects/c:c++/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/serhatandic/Desktop/projects/c:c++/cmake-build-debug/CMakeFiles/rebuild_cache.dir
