@@ -56,6 +56,17 @@ public:
 
 };
 
+class Triangle{
+public:
+    Vec3f a, b, c;
+    Vec3f color;
+
+    Triangle() = default;
+
+    Triangle(const Vec3f &a, const Vec3f &b, const Vec3f &c, const Vec3f &color) :  a(a), b(b), c(c), color(color) {}
+
+};
+
 class Ray{
 public:
     Vec3f origin, direction;
@@ -63,6 +74,13 @@ public:
     Ray() = default;
 
     Ray(const Vec3f &origin, const Vec3f &direction) : origin(origin), direction(direction) {}
+
+    double determinant(const Vec3f& a, const Vec3f& b, const Vec3f& c) const {
+        return a.x * (b.y * c.z - c.y * b.z)
+               - a.y * (b.x * c.z - c.x * b.z)
+               + a.z * (b.x * c.y - c.x * b.y);
+    }
+
 
     [[nodiscard]] double intersectSphere(Sphere s) const{
         double A, B, C; // constants for the eqn
@@ -86,6 +104,29 @@ public:
             return std::min(t1, t2);
         }
         return -1;
+    }
+
+    [[nodiscard]] double intersectTriangle(Triangle triangle) const{
+        double Beta, Gamma, t;
+        double detOfA, detForBeta, detForGamma, detFort;
+
+        detOfA = determinant(triangle.a - triangle.b, triangle.a - triangle.c, direction);
+        if (detOfA == 0){
+            return -1;
+        }
+
+        detForBeta = determinant(triangle.a - origin, triangle.a - triangle.c, direction);
+        detForGamma = determinant(triangle.a - triangle.b, triangle.a - origin, direction);
+        detFort = determinant(triangle.a - triangle.b, triangle.a - triangle.c, triangle.a - origin);
+
+        Beta = detForBeta / detOfA;
+        Gamma = detForGamma / detOfA;
+        t = detFort / detOfA;
+        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > 0){
+            return t;
+        }
+        return -1;
+
     }
 
     [[nodiscard]] Vec3f computeColor(const std::vector<Sphere>& spheres, const Vec3f lightSource) const {
