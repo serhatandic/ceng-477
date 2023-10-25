@@ -33,11 +33,6 @@ namespace parser
         float x, y, z, w;
     };
 
-    struct Ray {
-        Vec3f origin;      // The starting point of the ray
-        Vec3f direction;   // The direction the ray is traveling
-    };
-
     struct Camera
     {
         Vec3f position;
@@ -91,6 +86,12 @@ namespace parser
         float radius;
     };
 
+    struct Ray {
+        Vec3f origin;      // The starting point of the ray
+        Vec3f direction;   // The direction the ray is traveling
+
+    };
+
     struct Scene
     {
         //Data
@@ -109,6 +110,8 @@ namespace parser
         //Functions
         void loadFromXml(const std::string &filepath);
         Ray generateRay(int i, int j); // ray goes through i,j th pixel
+        float intersect(Sphere s, parser::Ray ray) const;
+
         void renderScene();
         };
 }

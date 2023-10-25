@@ -58,8 +58,8 @@ namespace parser {
         float pixelWidth = (right - left) / (float) imageWidth;
         float pixelHeight = (top - bottom) / (float)imageHeight;
 
-        distFromLeft = (i + 0.5) * pixelWidth;
-        distFromTop = (j + 0.5) * pixelHeight;
+        distFromLeft = (float)(i + 0.5) * pixelWidth;
+        distFromTop = (float)(j + 0.5) * pixelHeight;
 
         Vec3f gaze = cam.gaze;
         Vec3f camPosition = cam.position;
@@ -71,6 +71,32 @@ namespace parser {
         tipOfRay = topLeftCorner + u*distFromLeft + v * (-distFromTop);
 
         return {camPosition, (tipOfRay + camPosition * -1).normalized()};
+    }
+
+    float Scene::intersect(parser::Sphere s, parser::Ray ray) const {
+        float A, B, C; // constants for the quadratic equation
+        float delta;
+        float singleRoot, doubleRootFirst, doubleRootSecond;
+
+        std::vector<Vec3f> vertexData = this->vertex_data;
+
+        Vec3f sphereCenter = vertexData[s.center_vertex_id - 1];
+
+        A = ray.direction.dot(ray.direction);
+        B = 2*ray.direction.dot(ray.origin - sphereCenter);
+        C = (ray.origin - sphereCenter).dot(ray.origin - sphereCenter) - s.radius * s.radius;
+
+        delta = B*B - 4*A*C;
+
+        if (delta == 0){
+            singleRoot = -B / (2*A);
+            return singleRoot;
+        }else if (delta > 0){
+            doubleRootFirst = (-B - sqrt(delta)) / (2*A);
+            doubleRootSecond = (-B + sqrt(delta)) / (2*A);
+            return std::min(doubleRootFirst, doubleRootSecond);
+        }
+        return -1;
     }
 }
 
@@ -91,7 +117,6 @@ int main(int argc, char* argv[])
     //
     // Normally, you would be running your ray tracing
     // code here to produce the desired image.
-
     const RGB BAR_COLOR[8] =
     {
         { 255, 255, 255 },  // 100% White
