@@ -21,6 +21,14 @@ namespace parser {
         return {x * scalar, y * scalar, z * scalar};
     }
 
+    Vec3f Vec3f::operator*(const Vec3f& other) const {
+        return {x * other.x, y * other.y, z * other.z};
+    }
+
+    Vec3f Vec3f::operator/(const float other) const {
+        return {x / other, y / other, z / other};
+    }
+
     float Vec3f::dot(const Vec3f& other) const {
         return x * other.x + y * other.y + z * other.z;
     }
@@ -28,7 +36,14 @@ namespace parser {
     Vec3f Vec3f::cross(const Vec3f& other) const {
         return {y * other.z - z * other.y, z * other.x - x * other.z, x * other.y - y * other.x};
     }
-
+    Vec3f Vec3f::clamp() const {
+        Vec3f color = {this->x, this->y, this->z};
+        return {
+                std::max(0.0f, std::min(1.0f, color.x)),
+                std::max(0.0f, std::min(1.0f, color.y)),
+                std::max(0.0f, std::min(1.0f, color.z))
+        };
+    }
     Vec3f Vec3f::normalized() const {
         float length = sqrt(x * x + y * y + z * z);
         if (length > 0) {
@@ -37,11 +52,10 @@ namespace parser {
         return {};
     }
 
-    Ray Scene::generateRay(int i, int j) { // ray goes through i,j th pixel
+    Ray Scene::generateRay(int i, int j, Camera &cam) { // ray goes through i,j th pixel
         float distFromLeft, distFromTop;
         Vec3f imageCenter, topLeftCorner, tipOfRay;
         Vec3f u, v, w;
-        Camera cam = this -> cameras[0];
 
         w = cam.gaze * -1;
         v = cam.up;
@@ -87,7 +101,6 @@ namespace parser {
         C = (ray.origin - sphereCenter).dot(ray.origin - sphereCenter) - s.radius * s.radius;
 
         delta = B*B - 4*A*C;
-
         if (delta == 0){
             singleRoot = -B / (2*A);
             return singleRoot;
@@ -98,6 +111,62 @@ namespace parser {
         }
         return -1;
     }
+
+    Vec3f Scene::computeColor(Sphere s, PointLight pointLight, Vec3f ambientLight, Ray ray, Camera &cam) {
+        float t = intersect(s, ray); // I'm assuming intersect returns a float and is properly defined elsewhere
+        if (t < 0) return {0, 0, 0}; // No intersection, return black TODO: should return background color
+
+        std::vector<Vec3f> vertexData = this->vertex_data;
+        Vec3f sphereCenter = vertexData[s.center_vertex_id - 1];
+
+        Vec3f intersectionPoint = ray.origin + ray.direction * t;
+        Vec3f normal = (intersectionPoint - sphereCenter).normalized();
+        Vec3f lightDir = (pointLight.position - intersectionPoint).normalized();
+        // Vec3f viewDir = (cam.position - intersectionPoint).normalized(); // Assuming camera is in the scene
+        float dotLN = lightDir.normalized().dot(normal.normalized());
+        Material material = materials[s.material_id - 1];
+
+        // Ambient
+        Vec3f ambient = ambientLight * material.ambient;
+
+        // Diffuse
+        float diff = std::max(normal.dot(lightDir), 0.0f);
+        Vec3f diffuse = pointLight.intensity * material.diffuse * diff;
+
+/*
+        // Specular
+        Vec3f reflectDir = reflect(-lightDir, normal);
+        float spec = std::pow(std::max(viewDir.dot(reflectDir), 0.0f), material.phong_exponent);
+        Vec3f specular = pointLight.intensity * material.specular * spec;*/
+
+        // Sum up all components
+        Vec3f result = ambient + diffuse ;
+        if (dotLN > 0){
+            return result.clamp() * dotLN;
+        }
+
+        return result.clamp();
+    }
+
+    void Scene::renderScene(unsigned char* image) {
+        Camera cam = this->cameras[0];
+
+        int imageWidth = cam.image_width;
+        int imageHeight = cam.image_height;
+        int k = 0;
+        for (int j = 0; j < imageHeight; j++) {
+            for (int i = 0; i < imageWidth; i++) {
+                Ray myRay = generateRay(i, j, cam);
+                Vec3f rayColor = computeColor(this->spheres[0], this->point_lights[0], this->ambient_light, myRay, cam);
+
+                image[k++] = round(rayColor.x*255);
+                image[k++] = round(rayColor.y*255);
+                image[k++] = round(rayColor.z*255);
+
+            }
+        }
+    }
+
 }
 
 std::ostream& operator<<(std::ostream& os, const parser::Vec3f& v) {
@@ -110,41 +179,12 @@ int main(int argc, char* argv[])
     parser::Scene scene;
 
     scene.loadFromXml(argv[1]);
-
-    // The code below creates a test pattern and writes
-    // it to a PPM file to demonstrate the usage of the
-    // ppm_write function.
-    //
-    // Normally, you would be running your ray tracing
-    // code here to produce the desired image.
-    const RGB BAR_COLOR[8] =
-    {
-        { 255, 255, 255 },  // 100% White
-        { 255, 255,   0 },  // Yellow
-        {   0, 255, 255 },  // Cyan
-        {   0, 255,   0 },  // Green
-        { 255,   0, 255 },  // Magenta
-        { 255,   0,   0 },  // Red
-        {   0,   0, 255 },  // Blue
-        {   0,   0,   0 },  // Black
-    };
-
-    int width = 640, height = 480;
-    int columnWidth = width / 8;
+    parser::Camera cam = scene.cameras[0];
+    int width = cam.image_width, height = cam.image_height;
 
     unsigned char* image = new unsigned char [width * height * 3];
 
-    int i = 0;
-    for (int y = 0; y < height; ++y)
-    {
-        for (int x = 0; x < width; ++x)
-        {
-            int colIdx = x / columnWidth;
-            image[i++] = BAR_COLOR[colIdx][0];
-            image[i++] = BAR_COLOR[colIdx][1];
-            image[i++] = BAR_COLOR[colIdx][2];
-        }
-    }
+    scene.renderScene(image);
 
     write_ppm("test.ppm", image, width, height);
 

@@ -16,10 +16,12 @@ namespace parser
         Vec3f operator+(const Vec3f& other) const;
         Vec3f operator-(const Vec3f& other) const;
         Vec3f operator*(float scalar) const;
+        Vec3f operator*(const Vec3f& other) const;
+        Vec3f operator/(const float other) const;
         [[nodiscard]] float dot(const Vec3f& other) const;
         [[nodiscard]] Vec3f cross(const Vec3f& other) const;
         [[nodiscard]] Vec3f normalized() const;
-
+        Vec3f clamp() const;
         friend std::ostream& operator<<(std::ostream& os, const Vec3f& v);
     };
 
@@ -109,10 +111,10 @@ namespace parser
 
         //Functions
         void loadFromXml(const std::string &filepath);
-        Ray generateRay(int i, int j); // ray goes through i,j th pixel
-        float intersect(Sphere s, parser::Ray ray) const;
-
-        void renderScene();
+        Ray generateRay(int i, int j, Camera &cam); // ray goes through i,j th pixel
+        [[nodiscard]] float intersect(Sphere s, parser::Ray ray) const;
+        Vec3f computeColor(Sphere s, PointLight pointLight, Vec3f ambientLight, Ray ray, Camera &cam);
+        void renderScene(unsigned char* image);
         };
 }
 
