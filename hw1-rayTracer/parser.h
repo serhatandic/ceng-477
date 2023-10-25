@@ -11,6 +11,16 @@ namespace parser
     struct Vec3f
     {
         float x, y, z;
+        Vec3f();
+        Vec3f(float x, float y, float z);
+        Vec3f operator+(const Vec3f& other) const;
+        Vec3f operator-(const Vec3f& other) const;
+        Vec3f operator*(float scalar) const;
+        [[nodiscard]] float dot(const Vec3f& other) const;
+        [[nodiscard]] Vec3f cross(const Vec3f& other) const;
+        [[nodiscard]] Vec3f normalized() const;
+
+        friend std::ostream& operator<<(std::ostream& os, const Vec3f& v);
     };
 
     struct Vec3i
@@ -21,6 +31,11 @@ namespace parser
     struct Vec4f
     {
         float x, y, z, w;
+    };
+
+    struct Ray {
+        Vec3f origin;      // The starting point of the ray
+        Vec3f direction;   // The direction the ray is traveling
     };
 
     struct Camera
@@ -93,7 +108,9 @@ namespace parser
 
         //Functions
         void loadFromXml(const std::string &filepath);
-    };
+        Ray generateRay(int i, int j); // ray goes through i,j th pixel
+        void renderScene();
+        };
 }
 
 #endif
