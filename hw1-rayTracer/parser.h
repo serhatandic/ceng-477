@@ -21,13 +21,16 @@ namespace parser
         [[nodiscard]] float dot(const Vec3f& other) const;
         [[nodiscard]] Vec3f cross(const Vec3f& other) const;
         [[nodiscard]] Vec3f normalized() const;
+        static float determinant(const Vec3f& a, const Vec3f& b, const Vec3f& c) ;
         Vec3f clamp() const;
+        float distance() const;
         friend std::ostream& operator<<(std::ostream& os, const Vec3f& v);
     };
 
     struct Vec3i
     {
         int x, y, z;
+        Vec3f operator*(float scalar) const;
     };
 
     struct Vec4f
@@ -94,6 +97,17 @@ namespace parser
 
     };
 
+    struct HitPoint {
+        Vec3f normal;
+        Vec3f hitPoint;
+        float t;
+        int materialId;
+
+        HitPoint(const Vec3f &normal, const Vec3f &hitPoint, const float &t, int materialId);
+
+        HitPoint();
+    };
+
     struct Scene
     {
         //Data
@@ -113,7 +127,10 @@ namespace parser
         void loadFromXml(const std::string &filepath);
         Ray generateRay(int i, int j, Camera &cam); // ray goes through i,j th pixel
         [[nodiscard]] float intersect(Sphere s, parser::Ray ray) const;
-        Vec3f computeColor(Sphere s, PointLight pointLight, Vec3f ambientLight, Ray ray, Camera &cam);
+        [[nodiscard]] float intersect(Triangle t, parser::Ray ray) const;
+        [[nodiscard]] float intersect(parser::Face face, parser::Ray ray) const;
+        Vec3f computeColor(HitPoint hitPoint, const std::vector<PointLight>& pointLights, Vec3f ambientLight, Ray ray, Camera &cam);
+        HitPoint closestIntersection(Ray ray);
         void renderScene(unsigned char* image);
         };
 }

@@ -52,6 +52,24 @@ namespace parser {
         return {};
     }
 
+    float Vec3f::determinant(const Vec3f& a, const Vec3f& b, const Vec3f& c) {
+        return a.x * (b.y * c.z - c.y * b.z)
+               - a.y * (b.x * c.z - c.x * b.z)
+               + a.z * (b.x * c.y - c.x * b.y);
+    }
+
+    float Vec3f::distance() const {
+        return sqrt(x*x + y*y + z*z);
+    }
+    Vec3f Vec3i::operator*(float scalar) const {
+        return {x * scalar, y * scalar, z * scalar};
+    }
+
+    HitPoint::HitPoint(const Vec3f &normal, const Vec3f &hitPoint, const float &t,int materialId) : normal(normal), hitPoint(hitPoint), t(t),
+                                                                                     materialId(materialId) {}
+
+    HitPoint::HitPoint() {}
+
     Ray Scene::generateRay(int i, int j, Camera &cam) { // ray goes through i,j th pixel
         float distFromLeft, distFromTop;
         Vec3f imageCenter, topLeftCorner, tipOfRay;
@@ -112,34 +130,140 @@ namespace parser {
         return -1;
     }
 
-    Vec3f Scene::computeColor(Sphere s, PointLight pointLight, Vec3f ambientLight, Ray ray, Camera &cam) {
-        float t = intersect(s, ray); // I'm assuming intersect returns a float and is properly defined elsewhere
-        if (t < 0) return {0, 0, 0}; // No intersection, return black TODO: should return background color
+    float Scene::intersect(parser::Triangle triangle, parser::Ray ray) const {
+        float Beta, Gamma, t;
+        float detOfA, detForBeta, detForGamma, detFort;
 
         std::vector<Vec3f> vertexData = this->vertex_data;
-        Vec3f sphereCenter = vertexData[s.center_vertex_id - 1];
+        Vec3f triangleA = vertexData[triangle.indices.v0_id - 1];
+        Vec3f triangleB = vertexData[triangle.indices.v1_id - 1];
+        Vec3f triangleC = vertexData[triangle.indices.v2_id - 1];
 
-        Vec3f intersectionPoint = ray.origin + ray.direction * t;
-        Vec3f normal = (intersectionPoint - sphereCenter).normalized();
-        Vec3f lightDir = (pointLight.position - intersectionPoint).normalized();
-        // Vec3f viewDir = (cam.position - intersectionPoint).normalized(); // Assuming camera is in the scene
-        Material material = materials[s.material_id - 1];
+        detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
+        if (detOfA == 0){
+            return -1;
+        }
 
-        // Ambient
-        Vec3f ambient = ambientLight * material.ambient;
+        detForBeta = parser::Vec3f::determinant(triangleA - ray.origin, triangleA - triangleC, ray.direction);
+        detForGamma = parser::Vec3f::determinant(triangleA - triangleB, triangleA - ray.origin, ray.direction);
+        detFort = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, triangleA - ray.origin);
 
-        // Diffuse
-        float diff = std::max(normal.dot(lightDir), 0.0f);
-        Vec3f diffuse = pointLight.intensity * material.diffuse * diff;
+        Beta = detForBeta / detOfA;
+        Gamma = detForGamma / detOfA;
+        t = detFort / detOfA;
+        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > 0){
+            return t;
+        }
+        return -1;
+    }
 
-/*
-        // Specular
-        Vec3f reflectDir = reflect(-lightDir, normal);
-        float spec = std::pow(std::max(viewDir.dot(reflectDir), 0.0f), material.phong_exponent);
-        Vec3f specular = pointLight.intensity * material.specular * spec;*/
+    float Scene::intersect(parser::Face face, parser::Ray ray) const {
+        float Beta, Gamma, t;
+        float detOfA, detForBeta, detForGamma, detFort;
+
+        std::vector<Vec3f> vertexData = this->vertex_data;
+        Vec3f triangleA = vertexData[face.v0_id - 1];
+        Vec3f triangleB = vertexData[face.v1_id - 1];
+        Vec3f triangleC = vertexData[face.v2_id - 1];
+
+        detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
+        if (detOfA == 0){
+            return -1;
+        }
+
+        detForBeta = parser::Vec3f::determinant(triangleA - ray.origin, triangleA - triangleC, ray.direction);
+        detForGamma = parser::Vec3f::determinant(triangleA - triangleB, triangleA - ray.origin, ray.direction);
+        detFort = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, triangleA - ray.origin);
+
+        Beta = detForBeta / detOfA;
+        Gamma = detForGamma / detOfA;
+        t = detFort / detOfA;
+        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > 0){
+            return t;
+        }
+        return -1;
+    }
+
+    HitPoint Scene::closestIntersection(Ray ray){
+        HitPoint hitPoint;
+        float minT = 90000;
+        hitPoint.t = -1;
+
+        for (Sphere sphere: spheres){
+            float sphereIntersection = intersect(sphere, ray);
+            if (sphereIntersection < minT && sphereIntersection > 0){
+                hitPoint.t = sphereIntersection;
+                hitPoint.materialId = sphere.material_id;
+                hitPoint.hitPoint = ray.origin + ray.direction * sphereIntersection;
+                hitPoint.normal = (hitPoint.hitPoint - vertex_data[sphere.center_vertex_id - 1]).normalized();
+            }
+        }
+
+        for (Triangle triangle: triangles){
+            float triangleIntersection = intersect(triangle, ray);
+            if (triangleIntersection < minT && triangleIntersection > 0){
+                hitPoint.t = triangleIntersection;
+                hitPoint.materialId = triangle.material_id;
+                hitPoint.hitPoint = ray.origin + ray.direction * triangleIntersection;
+                Vec3f triangleA = vertex_data[triangle.indices.v0_id - 1];
+                Vec3f triangleB = vertex_data[triangle.indices.v1_id - 1];
+                Vec3f triangleC = vertex_data[triangle.indices.v2_id - 1];
+
+                hitPoint.normal = (triangleA - triangleB).cross(triangleA - triangleC);            }
+        }
+
+        for (const Mesh& mesh: meshes){
+            for (Face face: mesh.faces){
+                float faceIntersection = intersect(face, ray);
+                if (faceIntersection < minT && faceIntersection > 0){
+                    hitPoint.t = faceIntersection;
+                    hitPoint.materialId = mesh.material_id;
+                    hitPoint.hitPoint = ray.origin + ray.direction * faceIntersection;
+
+                    Vec3f faceA = vertex_data[face.v0_id - 1];
+                    Vec3f faceB = vertex_data[face.v1_id - 1];
+                    Vec3f faceC = vertex_data[face.v2_id - 1];
+
+                    hitPoint.normal = (faceA - faceB).cross(faceA - faceC);
+                }
+            }
+        }
+
+        return hitPoint;
+    }
+
+    Vec3f Scene::computeColor(HitPoint hitPoint, const std::vector<PointLight>& pointLights, Vec3f ambientLight, Ray ray, Camera &cam) {
+        float t = hitPoint.t;
+        Vec3f normal = hitPoint.normal;
+        Vec3f intersectionPoint = hitPoint.hitPoint;
+        std::cout << t << std::endl;
+        if (t < 0) return this->background_color * 1.0f; // No intersection, return bgcolor
+        Vec3f totalSpecular, totalDiffuse, ambient;
+
+        for (PointLight pointLight: pointLights){
+            Vec3f lightDir = (pointLight.position - intersectionPoint).normalized();
+            Vec3f viewDir = (cam.position - intersectionPoint).normalized(); // Assuming camera is in the scene
+            Material material = materials[hitPoint.materialId- 1];
+
+            // Ambient
+            ambient = (ambientLight * material.ambient);
+
+            // Diffuse
+            float diff = std::max(normal.dot(lightDir), 0.0f);
+            Vec3f diffuse = (pointLight.intensity / pow((pointLight.position - intersectionPoint).distance(),2))  * material.diffuse * diff;
+
+            // Specular
+            Vec3f halfVector = (lightDir + viewDir).normalized();
+            float spec = std::pow(std::max(halfVector.dot(normal), 0.0f), material.phong_exponent);
+            Vec3f specular = pointLight.intensity * material.specular * spec;
+
+            totalSpecular = specular + totalSpecular;
+            totalDiffuse = diffuse + totalDiffuse;
+        }
 
         // Sum up all components
-        Vec3f result = ambient + diffuse;
+        Vec3f result = totalDiffuse + totalSpecular + ambient;
+        std::cout << result.x << " " << result.y << " " << result.z << std::endl;
         return result.clamp();
     }
 
@@ -152,7 +276,9 @@ namespace parser {
         for (int j = 0; j < imageHeight; j++) {
             for (int i = 0; i < imageWidth; i++) {
                 Ray myRay = generateRay(i, j, cam);
-                Vec3f rayColor = computeColor(this->spheres[0], this->point_lights[0], this->ambient_light, myRay, cam);
+                HitPoint hitPoint = closestIntersection(myRay);
+
+                Vec3f rayColor = computeColor(hitPoint,this->point_lights, this->ambient_light, myRay, cam);
 
                 image[k++] = (unsigned char) rayColor.x;
                 image[k++] = (unsigned char) rayColor.y;
