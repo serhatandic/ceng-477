@@ -191,7 +191,7 @@ namespace parser {
 
         for (Sphere sphere: spheres){
             float sphereIntersection = intersect(sphere, ray);
-            if (sphereIntersection < minT && sphereIntersection > 0){
+            if (sphereIntersection < minT && sphereIntersection >= 1){
                 hitPoint.t = sphereIntersection;
                 hitPoint.materialId = sphere.material_id;
                 hitPoint.hitPoint = ray.origin + ray.direction * sphereIntersection;
@@ -202,7 +202,7 @@ namespace parser {
 
         for (Triangle triangle: triangles){
             float triangleIntersection = intersect(triangle, ray);
-            if (triangleIntersection < minT && triangleIntersection > 0){
+            if (triangleIntersection < minT && triangleIntersection >= 1){
                 hitPoint.t = triangleIntersection;
                 hitPoint.materialId = triangle.material_id;
                 hitPoint.hitPoint = ray.origin + ray.direction * triangleIntersection;
@@ -218,7 +218,7 @@ namespace parser {
         for (const Mesh& mesh: meshes){
             for (Face face: mesh.faces){
                 float faceIntersection = intersect(face, ray);
-                if (faceIntersection < minT && faceIntersection > 0){
+                if (faceIntersection < minT && faceIntersection >= 1){
                     hitPoint.t = faceIntersection;
                     hitPoint.materialId = mesh.material_id;
                     hitPoint.hitPoint = ray.origin + ray.direction * faceIntersection;
@@ -254,7 +254,7 @@ namespace parser {
 
             // Diffuse
             float diff = std::max(normal.dot(lightDir), 0.0f);
-            Vec3f diffuse = (pointLight.intensity)  * material.diffuse * diff;
+            Vec3f diffuse = (pointLight.intensity / pow(pointLight.position.distance(intersectionPoint),2))  * material.diffuse * diff;
 
             // Specular
             Vec3f halfVector = (lightDir + viewDir).normalized();
