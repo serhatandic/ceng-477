@@ -49,17 +49,17 @@ cmake_ninja_workdir = /Users/serhatandic/Desktop/projects/c$:c++/cmake-build-deb
 
 build cmake_object_order_depends_target_c_c__: phony || CMakeFiles/c_c__.dir
 
-build CMakeFiles/c_c__.dir/main.cpp.o: CXX_COMPILER__c_c___unscanned_Debug /Users/serhatandic/Desktop/projects/c$:c++/main.cpp || cmake_object_order_depends_target_c_c__
-  DEP_FILE = CMakeFiles/c_c__.dir/main.cpp.o.d
+build CMakeFiles/c_c__.dir/hw1-rayTracer/raytracer.cpp.o: CXX_COMPILER__c_c___unscanned_Debug /Users/serhatandic/Desktop/projects/c$:c++/hw1-rayTracer/raytracer.cpp || cmake_object_order_depends_target_c_c__
+  DEP_FILE = CMakeFiles/c_c__.dir/hw1-rayTracer/raytracer.cpp.o.d
   FLAGS = -g -std=gnu++17 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.0.sdk -fcolor-diagnostics
   OBJECT_DIR = CMakeFiles/c_c__.dir
-  OBJECT_FILE_DIR = CMakeFiles/c_c__.dir
+  OBJECT_FILE_DIR = CMakeFiles/c_c__.dir/hw1-rayTracer
 
-build CMakeFiles/c_c__.dir/rayTracer.cpp.o: CXX_COMPILER__c_c___unscanned_Debug /Users/serhatandic/Desktop/projects/c$:c++/rayTracer.cpp || cmake_object_order_depends_target_c_c__
-  DEP_FILE = CMakeFiles/c_c__.dir/rayTracer.cpp.o.d
+build CMakeFiles/c_c__.dir/hw1-rayTracer/parser.cpp.o: CXX_COMPILER__c_c___unscanned_Debug /Users/serhatandic/Desktop/projects/c$:c++/hw1-rayTracer/parser.cpp || cmake_object_order_depends_target_c_c__
+  DEP_FILE = CMakeFiles/c_c__.dir/hw1-rayTracer/parser.cpp.o.d
   FLAGS = -g -std=gnu++17 -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.0.sdk -fcolor-diagnostics
   OBJECT_DIR = CMakeFiles/c_c__.dir
-  OBJECT_FILE_DIR = CMakeFiles/c_c__.dir
+  OBJECT_FILE_DIR = CMakeFiles/c_c__.dir/hw1-rayTracer
 
 
 # =============================================================================
@@ -69,7 +69,7 @@ build CMakeFiles/c_c__.dir/rayTracer.cpp.o: CXX_COMPILER__c_c___unscanned_Debug 
 #############################################
 # Link the executable c_c__
 
-build c_c__: CXX_EXECUTABLE_LINKER__c_c___Debug CMakeFiles/c_c__.dir/main.cpp.o CMakeFiles/c_c__.dir/rayTracer.cpp.o
+build c_c__: CXX_EXECUTABLE_LINKER__c_c___Debug CMakeFiles/c_c__.dir/hw1-rayTracer/raytracer.cpp.o CMakeFiles/c_c__.dir/hw1-rayTracer/parser.cpp.o
   FLAGS = -g -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.0.sdk
   OBJECT_DIR = CMakeFiles/c_c__.dir
   POST_BUILD = :

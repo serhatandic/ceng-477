@@ -39,9 +39,9 @@ namespace parser {
     Vec3f Vec3f::clamp() const {
         Vec3f color = {this->x, this->y, this->z};
         return {
-                std::max(0.0f, std::min(1.0f, color.x)),
-                std::max(0.0f, std::min(1.0f, color.y)),
-                std::max(0.0f, std::min(1.0f, color.z))
+                std::max(0.0f, std::min((float)255, color.x)),
+                std::max(0.0f, std::min((float)255, color.y)),
+                std::max(0.0f, std::min((float)255, color.z))
         };
     }
     Vec3f Vec3f::normalized() const {
@@ -123,7 +123,6 @@ namespace parser {
         Vec3f normal = (intersectionPoint - sphereCenter).normalized();
         Vec3f lightDir = (pointLight.position - intersectionPoint).normalized();
         // Vec3f viewDir = (cam.position - intersectionPoint).normalized(); // Assuming camera is in the scene
-        float dotLN = lightDir.normalized().dot(normal.normalized());
         Material material = materials[s.material_id - 1];
 
         // Ambient
@@ -140,11 +139,7 @@ namespace parser {
         Vec3f specular = pointLight.intensity * material.specular * spec;*/
 
         // Sum up all components
-        Vec3f result = ambient + diffuse ;
-        if (dotLN > 0){
-            return result.clamp() * dotLN;
-        }
-
+        Vec3f result = ambient + diffuse;
         return result.clamp();
     }
 
@@ -159,9 +154,9 @@ namespace parser {
                 Ray myRay = generateRay(i, j, cam);
                 Vec3f rayColor = computeColor(this->spheres[0], this->point_lights[0], this->ambient_light, myRay, cam);
 
-                image[k++] = round(rayColor.x*255);
-                image[k++] = round(rayColor.y*255);
-                image[k++] = round(rayColor.z*255);
+                image[k++] = (unsigned char) rayColor.x;
+                image[k++] = (unsigned char) rayColor.y;
+                image[k++] = (unsigned char) rayColor.z;
 
             }
         }
