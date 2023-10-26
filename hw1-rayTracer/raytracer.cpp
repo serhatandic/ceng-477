@@ -58,8 +58,8 @@ namespace parser {
                + a.z * (b.x * c.y - c.x * b.y);
     }
 
-    float Vec3f::distance() const {
-        return sqrt(x*x + y*y + z*z);
+    float Vec3f::distance(Vec3f &other) const {
+        return sqrt((x - other.x)*(x - other.x) + (y - other.y)*(y - other.y) + (z - other.z)*(z - other.z));
     }
     Vec3f Vec3i::operator*(float scalar) const {
         return {x * scalar, y * scalar, z * scalar};
@@ -196,6 +196,7 @@ namespace parser {
                 hitPoint.materialId = sphere.material_id;
                 hitPoint.hitPoint = ray.origin + ray.direction * sphereIntersection;
                 hitPoint.normal = (hitPoint.hitPoint - vertex_data[sphere.center_vertex_id - 1]).normalized();
+                minT = sphereIntersection;
             }
         }
 
@@ -209,7 +210,9 @@ namespace parser {
                 Vec3f triangleB = vertex_data[triangle.indices.v1_id - 1];
                 Vec3f triangleC = vertex_data[triangle.indices.v2_id - 1];
 
-                hitPoint.normal = (triangleA - triangleB).cross(triangleA - triangleC);            }
+                hitPoint.normal = (triangleA - triangleB).cross(triangleA - triangleC);
+                minT = triangleIntersection;
+            }
         }
 
         for (const Mesh& mesh: meshes){
@@ -225,6 +228,7 @@ namespace parser {
                     Vec3f faceC = vertex_data[face.v2_id - 1];
 
                     hitPoint.normal = (faceA - faceB).cross(faceA - faceC);
+                    minT = faceIntersection;
                 }
             }
         }
@@ -234,28 +238,28 @@ namespace parser {
 
     Vec3f Scene::computeColor(HitPoint hitPoint, const std::vector<PointLight>& pointLights, Vec3f ambientLight, Ray ray, Camera &cam) {
         float t = hitPoint.t;
-        Vec3f normal = hitPoint.normal;
+        Vec3f normal = hitPoint.normal.normalized();
         Vec3f intersectionPoint = hitPoint.hitPoint;
+
         std::cout << t << std::endl;
         if (t < 0) return this->background_color * 1.0f; // No intersection, return bgcolor
+
         Vec3f totalSpecular, totalDiffuse, ambient;
+        Material material = materials[hitPoint.materialId- 1];
+        ambient = (ambientLight * material.ambient);
 
         for (PointLight pointLight: pointLights){
             Vec3f lightDir = (pointLight.position - intersectionPoint).normalized();
             Vec3f viewDir = (cam.position - intersectionPoint).normalized(); // Assuming camera is in the scene
-            Material material = materials[hitPoint.materialId- 1];
-
-            // Ambient
-            ambient = (ambientLight * material.ambient);
 
             // Diffuse
             float diff = std::max(normal.dot(lightDir), 0.0f);
-            Vec3f diffuse = (pointLight.intensity / pow((pointLight.position - intersectionPoint).distance(),2))  * material.diffuse * diff;
+            Vec3f diffuse = (pointLight.intensity)  * material.diffuse * diff;
 
             // Specular
             Vec3f halfVector = (lightDir + viewDir).normalized();
             float spec = std::pow(std::max(halfVector.dot(normal), 0.0f), material.phong_exponent);
-            Vec3f specular = pointLight.intensity * material.specular * spec;
+            Vec3f specular = (pointLight.intensity  / pow(pointLight.position.distance(intersectionPoint),2)) * material.specular * spec;
 
             totalSpecular = specular + totalSpecular;
             totalDiffuse = diffuse + totalDiffuse;

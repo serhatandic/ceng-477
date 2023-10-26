@@ -23,7 +23,7 @@ namespace parser
         [[nodiscard]] Vec3f normalized() const;
         static float determinant(const Vec3f& a, const Vec3f& b, const Vec3f& c) ;
         Vec3f clamp() const;
-        float distance() const;
+        float distance(Vec3f &other) const;
         friend std::ostream& operator<<(std::ostream& os, const Vec3f& v);
     };
 
