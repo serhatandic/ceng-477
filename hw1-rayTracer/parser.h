@@ -94,7 +94,11 @@ namespace parser
     struct Ray {
         Vec3f origin;      // The starting point of the ray
         Vec3f direction;   // The direction the ray is traveling
+        int depth;
 
+        Ray();
+
+        Ray(Vec3f origin, Vec3f direction);
     };
 
     struct HitPoint {
@@ -122,14 +126,14 @@ namespace parser
         std::vector<Mesh> meshes;
         std::vector<Triangle> triangles;
         std::vector<Sphere> spheres;
-        float epsilon = 0.0001;
         //Functions
         void loadFromXml(const std::string &filepath);
         Ray generateRay(int i, int j, Camera &cam); // ray goes through i,j th pixel
         [[nodiscard]] float intersect(Sphere s, parser::Ray ray) const;
         [[nodiscard]] float intersect(Triangle t, parser::Ray ray) const;
         [[nodiscard]] float intersect(parser::Face face, parser::Ray ray) const;
-        Vec3f computeColor(HitPoint hitPoint, const std::vector<PointLight>& pointLights, Vec3f ambientLight, Ray ray, Camera &cam);
+        Vec3f computeColor(const std::vector<PointLight>& pointLights, Vec3f ambientLight, Ray ray, Camera &cam);
+        Vec3f applyShading(HitPoint hitPoint, const std::vector<PointLight>& pointLights, Camera &cam, Ray ray);
         HitPoint closestIntersection(Ray ray);
         void renderScene(unsigned char* image);
         bool isShadow(Vec3f intersectionPoint, Vec3f lightSourceLocation);

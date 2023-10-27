@@ -53,6 +53,9 @@ namespace parser {
         return {};
     }
 
+    Ray::Ray(): depth(0) {}
+    Ray::Ray(Vec3f origin, Vec3f direction): origin(origin), direction(direction), depth(0) {}
+
     float Vec3f::determinant(const Vec3f& a, const Vec3f& b, const Vec3f& c) {
         return a.x * (b.y * c.z - c.y * b.z)
                - a.y * (b.x * c.z - c.x * b.z)
@@ -139,6 +142,15 @@ namespace parser {
         Vec3f triangleA = vertexData[triangle.indices.v0_id - 1];
         Vec3f triangleB = vertexData[triangle.indices.v1_id - 1];
         Vec3f triangleC = vertexData[triangle.indices.v2_id - 1];
+/*
+
+        Vec3f normal = (triangleA - triangleB).cross(triangleA - triangleC);
+
+        float dotRN = normal.dot(ray.direction); // dot product of the triangle normal and the ray
+        if (dotRN < 0){ // back-face culling
+            return -1;
+        }
+*/
 
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
         if (detOfA == 0){
@@ -152,7 +164,7 @@ namespace parser {
         Beta = detForBeta / detOfA;
         Gamma = detForGamma / detOfA;
         t = detFort / detOfA;
-        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > this->epsilon){
+        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > this->shadow_ray_epsilon){
             return t;
         }
         return -1;
@@ -167,6 +179,16 @@ namespace parser {
         Vec3f triangleB = vertexData[face.v1_id - 1];
         Vec3f triangleC = vertexData[face.v2_id - 1];
 
+
+/*
+        Vec3f normal = (triangleA - triangleB).cross(triangleA - triangleC);
+
+        float dotRN = normal.dot(ray.direction); // dot product of the triangle normal and the ray
+        if (dotRN < 0){ // back-face culling
+            return -1;
+        }
+*/
+
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
         if (detOfA == 0){
             return -1;
@@ -179,20 +201,25 @@ namespace parser {
         Beta = detForBeta / detOfA;
         Gamma = detForGamma / detOfA;
         t = detFort / detOfA;
-        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > this->epsilon){
+        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > this->shadow_ray_epsilon){
             return t;
         }
         return -1;
     }
 
     HitPoint Scene::closestIntersection(Ray ray){
+
         HitPoint hitPoint;
         float minT = 90000;
         hitPoint.t = -1;
 
+        if (ray.depth > max_recursion_depth){
+            return hitPoint;
+        }
+
         for (Sphere sphere: spheres){
             float sphereIntersection = intersect(sphere, ray);
-            if (sphereIntersection < minT && sphereIntersection >= 0){
+            if (sphereIntersection < minT && sphereIntersection >= this->shadow_ray_epsilon){
                 hitPoint.t = sphereIntersection;
                 hitPoint.materialId = sphere.material_id;
                 hitPoint.hitPoint = ray.origin + ray.direction * sphereIntersection;
@@ -203,7 +230,7 @@ namespace parser {
 
         for (Triangle triangle: triangles){
             float triangleIntersection = intersect(triangle, ray);
-            if (triangleIntersection < minT && triangleIntersection >= 0){
+            if (triangleIntersection < minT && triangleIntersection >= this->shadow_ray_epsilon){
                 hitPoint.t = triangleIntersection;
                 hitPoint.materialId = triangle.material_id;
                 hitPoint.hitPoint = ray.origin + ray.direction * triangleIntersection;
@@ -219,7 +246,7 @@ namespace parser {
         for (const Mesh& mesh: meshes){
             for (Face face: mesh.faces){
                 float faceIntersection = intersect(face, ray);
-                if (faceIntersection < minT && faceIntersection >= 0){
+                if (faceIntersection < minT && faceIntersection >= this->shadow_ray_epsilon){
                     hitPoint.t = faceIntersection;
                     hitPoint.materialId = mesh.material_id;
                     hitPoint.hitPoint = ray.origin + ray.direction * faceIntersection;
@@ -249,23 +276,54 @@ namespace parser {
         return false;
     }
 
-    Vec3f Scene::computeColor(HitPoint hitPoint, const std::vector<PointLight>& pointLights, Vec3f ambientLight, Ray ray, Camera &cam) {
+    Vec3f Scene::computeColor(const std::vector<PointLight>& pointLights, Vec3f ambientLight, Ray ray, Camera &cam) {
+        if (ray.depth > max_recursion_depth){
+            return {0, 0, 0};
+        }
+
+        HitPoint hitPoint = closestIntersection(ray);
         float t = hitPoint.t;
+        Material material = materials[hitPoint.materialId- 1];
+
+        if (t < 0){
+            if (ray.depth == 0)
+                return this->background_color * 1.0f; // No intersection, return bgcolor
+            else{
+                return {0, 0, 0};
+            }
+        }
+        Vec3f shading = applyShading(hitPoint, pointLights, cam, ray);
+
+        Vec3f ambient = (ambientLight * material.ambient);
+
+        // Sum up all components
+        Vec3f result = shading + ambient;
+        if (isnan(result.x) || isnan(result.y) || isnan(result.z))
+            std::cout << result.x << " " << result.y << " " << result.z << std::endl;
+        return result.clamp();
+    }
+
+    Vec3f Scene::applyShading(HitPoint hitPoint, const std::vector<PointLight>& pointLights, Camera &cam, Ray ray){
+        Material material = materials[hitPoint.materialId- 1];
         Vec3f normal = hitPoint.normal.normalized();
         Vec3f intersectionPoint = hitPoint.hitPoint;
+        Vec3f totalSpecular, totalDiffuse;
+        Vec3f totalColor = {0,0,0};
 
-        if (t < 0) return this->background_color * 1.0f; // No intersection, return bgcolor
-
-        Vec3f totalSpecular, totalDiffuse, ambient;
-        Material material = materials[hitPoint.materialId- 1];
-        ambient = (ambientLight * material.ambient);
-
+        bool  isMirror = material.is_mirror;
+        if (isMirror){
+            Ray reflectionRay;
+            Vec3f reflectionRayDirection = ray.direction * -1 + normal*(normal.dot(ray.direction))*2;
+            reflectionRay.origin = intersectionPoint + normal * shadow_ray_epsilon;
+            reflectionRay.direction = reflectionRayDirection;
+            reflectionRay.depth = ray.depth + 1;
+            totalColor = totalColor + computeColor(pointLights, ambient_light, reflectionRay, cam) * material.mirror;
+        }
         for (PointLight pointLight: pointLights){
             if (isShadow(intersectionPoint, pointLight.position)){
-                totalSpecular = totalDiffuse = {0,0,0};
+                totalColor = {0,0,0};
                 break;
             }
-
             Vec3f lightDir = (pointLight.position - intersectionPoint).normalized();
             Vec3f viewDir = (cam.position - intersectionPoint).normalized(); // Assuming camera is in the scene
 
@@ -280,11 +338,11 @@ namespace parser {
 
             totalSpecular = specular + totalSpecular;
             totalDiffuse = diffuse + totalDiffuse;
+
+            totalColor = totalColor + totalSpecular + totalDiffuse;
         }
 
-        // Sum up all components
-        Vec3f result = totalDiffuse + totalSpecular + ambient;
-        return result.clamp();
+        return totalColor;
     }
 
     void Scene::renderScene(unsigned char* image) {
@@ -297,9 +355,7 @@ namespace parser {
             for (int j = 0; j < imageHeight; j++) {
                 for (int i = 0; i < imageWidth; i++) {
                     Ray myRay = generateRay(i, j, cam);
-                    HitPoint hitPoint = closestIntersection(myRay);
-
-                    Vec3f rayColor = computeColor(hitPoint,this->point_lights, this->ambient_light, myRay, cam);
+                    Vec3f rayColor = computeColor(this->point_lights, this->ambient_light, myRay, cam);
 
                     image[k++] = (unsigned char) rayColor.x;
                     image[k++] = (unsigned char) rayColor.y;
@@ -313,9 +369,9 @@ namespace parser {
                         double percentageComplete = (k / (double) (imageWidth * imageHeight * 3)) * 100;
                         double totalEstimatedTime = secondsElapsed / (percentageComplete / 100);
                         double secondsRemaining = totalEstimatedTime - secondsElapsed;
-
+/*
                         std::cout << "Progress: " << percentageComplete << "%" << std::endl;
-                        std::cout << "Estimated remaining time: " << secondsRemaining / 60 << "min" << std::endl;
+                        std::cout << "Estimated remaining time: " << secondsRemaining / 60 << "min" << std::endl;*/
                     }
 
                 }
