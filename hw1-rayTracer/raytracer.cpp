@@ -288,40 +288,40 @@ namespace parser {
     }
 
     void Scene::renderScene(unsigned char* image) {
-        Camera cam = this->cameras[0];
         auto start = std::chrono::high_resolution_clock::now(); //TODO: remove this
 
-        int imageWidth = cam.image_width;
-        int imageHeight = cam.image_height;
-        int k = 0;
-        for (int j = 0; j < imageHeight; j++) {
-            for (int i = 0; i < imageWidth; i++) {
-                Ray myRay = generateRay(i, j, cam);
-                HitPoint hitPoint = closestIntersection(myRay);
+        for (Camera cam : this->cameras){
+            int imageWidth = cam.image_width;
+            int imageHeight = cam.image_height;
+            int k = 0;
+            for (int j = 0; j < imageHeight; j++) {
+                for (int i = 0; i < imageWidth; i++) {
+                    Ray myRay = generateRay(i, j, cam);
+                    HitPoint hitPoint = closestIntersection(myRay);
 
-                Vec3f rayColor = computeColor(hitPoint,this->point_lights, this->ambient_light, myRay, cam);
+                    Vec3f rayColor = computeColor(hitPoint,this->point_lights, this->ambient_light, myRay, cam);
 
-                image[k++] = (unsigned char) rayColor.x;
-                image[k++] = (unsigned char) rayColor.y;
-                image[k++] = (unsigned char) rayColor.z;
+                    image[k++] = (unsigned char) rayColor.x;
+                    image[k++] = (unsigned char) rayColor.y;
+                    image[k++] = (unsigned char) rayColor.z;
 
-                //TODO: remove below part before submission
-                if (k % (imageWidth * 3) == 0) { // Print progress every row
-                    auto now = std::chrono::high_resolution_clock::now();
-                    std::chrono::duration<double> elapsed = now - start;
-                    double secondsElapsed = elapsed.count();
-                    double percentageComplete = (k / (double) (imageWidth * imageHeight * 3)) * 100;
-                    double totalEstimatedTime = secondsElapsed / (percentageComplete / 100);
-                    double secondsRemaining = totalEstimatedTime - secondsElapsed;
+                    //TODO: remove below part before submission
+                    if (k % (imageWidth * 3) == 0) { // Print progress every row
+                        auto now = std::chrono::high_resolution_clock::now();
+                        std::chrono::duration<double> elapsed = now - start;
+                        double secondsElapsed = elapsed.count();
+                        double percentageComplete = (k / (double) (imageWidth * imageHeight * 3)) * 100;
+                        double totalEstimatedTime = secondsElapsed / (percentageComplete / 100);
+                        double secondsRemaining = totalEstimatedTime - secondsElapsed;
 
-                    std::cout << "Progress: " << percentageComplete << "%" << std::endl;
-                    std::cout << "Estimated remaining time: " << secondsRemaining / 60 << "min" << std::endl;
+                        std::cout << "Progress: " << percentageComplete << "%" << std::endl;
+                        std::cout << "Estimated remaining time: " << secondsRemaining / 60 << "min" << std::endl;
+                    }
+
                 }
-
             }
         }
     }
-
 }
 
 std::ostream& operator<<(std::ostream& os, const parser::Vec3f& v) {
