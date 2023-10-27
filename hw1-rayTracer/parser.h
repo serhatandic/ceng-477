@@ -122,7 +122,7 @@ namespace parser
         std::vector<Mesh> meshes;
         std::vector<Triangle> triangles;
         std::vector<Sphere> spheres;
-
+        float epsilon = 0.0001;
         //Functions
         void loadFromXml(const std::string &filepath);
         Ray generateRay(int i, int j, Camera &cam); // ray goes through i,j th pixel
@@ -132,7 +132,8 @@ namespace parser
         Vec3f computeColor(HitPoint hitPoint, const std::vector<PointLight>& pointLights, Vec3f ambientLight, Ray ray, Camera &cam);
         HitPoint closestIntersection(Ray ray);
         void renderScene(unsigned char* image);
-        };
+        bool isShadow(Vec3f intersectionPoint, Vec3f lightSourceLocation);
+    };
 }
 
 #endif

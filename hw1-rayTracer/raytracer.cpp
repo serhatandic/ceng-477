@@ -1,6 +1,7 @@
 #include <iostream>
 #include "parser.h"
 #include "ppm.h"
+#include <chrono> // TODO: remove this before submission
 
 typedef unsigned char RGB[3];
 
@@ -151,7 +152,7 @@ namespace parser {
         Beta = detForBeta / detOfA;
         Gamma = detForGamma / detOfA;
         t = detFort / detOfA;
-        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > 0){
+        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > this->epsilon){
             return t;
         }
         return -1;
@@ -178,7 +179,7 @@ namespace parser {
         Beta = detForBeta / detOfA;
         Gamma = detForGamma / detOfA;
         t = detFort / detOfA;
-        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > 0){
+        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > this->epsilon){
             return t;
         }
         return -1;
@@ -191,7 +192,7 @@ namespace parser {
 
         for (Sphere sphere: spheres){
             float sphereIntersection = intersect(sphere, ray);
-            if (sphereIntersection < minT && sphereIntersection >= 1){
+            if (sphereIntersection < minT && sphereIntersection >= 0){
                 hitPoint.t = sphereIntersection;
                 hitPoint.materialId = sphere.material_id;
                 hitPoint.hitPoint = ray.origin + ray.direction * sphereIntersection;
@@ -202,7 +203,7 @@ namespace parser {
 
         for (Triangle triangle: triangles){
             float triangleIntersection = intersect(triangle, ray);
-            if (triangleIntersection < minT && triangleIntersection >= 1){
+            if (triangleIntersection < minT && triangleIntersection >= 0){
                 hitPoint.t = triangleIntersection;
                 hitPoint.materialId = triangle.material_id;
                 hitPoint.hitPoint = ray.origin + ray.direction * triangleIntersection;
@@ -218,7 +219,7 @@ namespace parser {
         for (const Mesh& mesh: meshes){
             for (Face face: mesh.faces){
                 float faceIntersection = intersect(face, ray);
-                if (faceIntersection < minT && faceIntersection >= 1){
+                if (faceIntersection < minT && faceIntersection >= 0){
                     hitPoint.t = faceIntersection;
                     hitPoint.materialId = mesh.material_id;
                     hitPoint.hitPoint = ray.origin + ray.direction * faceIntersection;
@@ -236,12 +237,23 @@ namespace parser {
         return hitPoint;
     }
 
+    bool Scene::isShadow(Vec3f intersectionPoint, Vec3f lightSourceLocation){
+        Ray ray;
+        ray.origin = intersectionPoint;
+        ray.direction = (lightSourceLocation - intersectionPoint).normalized();
+        HitPoint hitPoint = closestIntersection(ray);
+
+        if (hitPoint.t != -1){
+            return true;
+        }
+        return false;
+    }
+
     Vec3f Scene::computeColor(HitPoint hitPoint, const std::vector<PointLight>& pointLights, Vec3f ambientLight, Ray ray, Camera &cam) {
         float t = hitPoint.t;
         Vec3f normal = hitPoint.normal.normalized();
         Vec3f intersectionPoint = hitPoint.hitPoint;
 
-        std::cout << t << std::endl;
         if (t < 0) return this->background_color * 1.0f; // No intersection, return bgcolor
 
         Vec3f totalSpecular, totalDiffuse, ambient;
@@ -249,6 +261,11 @@ namespace parser {
         ambient = (ambientLight * material.ambient);
 
         for (PointLight pointLight: pointLights){
+            if (isShadow(intersectionPoint, pointLight.position)){
+                totalSpecular = totalDiffuse = {0,0,0};
+                break;
+            }
+
             Vec3f lightDir = (pointLight.position - intersectionPoint).normalized();
             Vec3f viewDir = (cam.position - intersectionPoint).normalized(); // Assuming camera is in the scene
 
@@ -267,12 +284,12 @@ namespace parser {
 
         // Sum up all components
         Vec3f result = totalDiffuse + totalSpecular + ambient;
-        std::cout << result.x << " " << result.y << " " << result.z << std::endl;
         return result.clamp();
     }
 
     void Scene::renderScene(unsigned char* image) {
         Camera cam = this->cameras[0];
+        auto start = std::chrono::high_resolution_clock::now(); //TODO: remove this
 
         int imageWidth = cam.image_width;
         int imageHeight = cam.image_height;
@@ -287,6 +304,19 @@ namespace parser {
                 image[k++] = (unsigned char) rayColor.x;
                 image[k++] = (unsigned char) rayColor.y;
                 image[k++] = (unsigned char) rayColor.z;
+
+                //TODO: remove below part before submission
+                if (k % (imageWidth * 3) == 0) { // Print progress every row
+                    auto now = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double> elapsed = now - start;
+                    double secondsElapsed = elapsed.count();
+                    double percentageComplete = (k / (double) (imageWidth * imageHeight * 3)) * 100;
+                    double totalEstimatedTime = secondsElapsed / (percentageComplete / 100);
+                    double secondsRemaining = totalEstimatedTime - secondsElapsed;
+
+                    std::cout << "Progress: " << percentageComplete << "%" << std::endl;
+                    std::cout << "Estimated remaining time: " << secondsRemaining / 60 << "min" << std::endl;
+                }
 
             }
         }
@@ -311,6 +341,8 @@ int main(int argc, char* argv[])
 
     scene.renderScene(image);
 
-    write_ppm("test.ppm", image, width, height);
+    const char* imageName = cam.image_name.c_str();
+
+    write_ppm(imageName, image, width, height);
 
 }
