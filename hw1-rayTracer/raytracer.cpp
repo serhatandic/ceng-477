@@ -276,7 +276,7 @@ namespace parser {
         return false;
     }
 
-    Vec3f Scene::computeColor(const std::vector<PointLight>& pointLights, Vec3f ambientLight, Ray ray, Camera &cam) {
+    Vec3f Scene::computeColor(Ray ray, Camera &cam) {
         if (ray.depth > max_recursion_depth){
             return {0, 0, 0};
         }
@@ -292,9 +292,9 @@ namespace parser {
                 return {0, 0, 0};
             }
         }
-        Vec3f shading = applyShading(hitPoint, pointLights, cam, ray);
+        Vec3f shading = applyShading(hitPoint, cam, ray);
 
-        Vec3f ambient = (ambientLight * material.ambient);
+        Vec3f ambient = (ambient_light * material.ambient);
 
         // Sum up all components
         Vec3f result = shading + ambient;
@@ -303,7 +303,7 @@ namespace parser {
         return result.clamp();
     }
 
-    Vec3f Scene::applyShading(HitPoint hitPoint, const std::vector<PointLight>& pointLights, Camera &cam, Ray ray){
+    Vec3f Scene::applyShading(HitPoint hitPoint, Camera &cam, Ray ray){
         Material material = materials[hitPoint.materialId- 1];
         Vec3f normal = hitPoint.normal.normalized();
         Vec3f intersectionPoint = hitPoint.hitPoint;
@@ -314,12 +314,12 @@ namespace parser {
         if (isMirror){
             Ray reflectionRay;
             Vec3f reflectionRayDirection = ray.direction * -1 + normal*(normal.dot(ray.direction))*2;
-            reflectionRay.origin = intersectionPoint + normal * shadow_ray_epsilon;
+            reflectionRay.origin = intersectionPoint;
             reflectionRay.direction = reflectionRayDirection;
             reflectionRay.depth = ray.depth + 1;
-            totalColor = totalColor + computeColor(pointLights, ambient_light, reflectionRay, cam) * material.mirror;
+            totalColor = totalColor + computeColor(reflectionRay, cam) * material.mirror;
         }
-        for (PointLight pointLight: pointLights){
+        for (PointLight pointLight: point_lights){
             if (isShadow(intersectionPoint, pointLight.position)){
                 totalColor = {0,0,0};
                 break;
@@ -355,7 +355,7 @@ namespace parser {
             for (int j = 0; j < imageHeight; j++) {
                 for (int i = 0; i < imageWidth; i++) {
                     Ray myRay = generateRay(i, j, cam);
-                    Vec3f rayColor = computeColor(this->point_lights, this->ambient_light, myRay, cam);
+                    Vec3f rayColor = computeColor(myRay, cam);
 
                     image[k++] = (unsigned char) rayColor.x;
                     image[k++] = (unsigned char) rayColor.y;
