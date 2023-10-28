@@ -71,6 +71,7 @@ namespace parser
         int v1_id;
         int v2_id;
         Vec3f normal;
+        bool isNormalInversed;
     };
 
     struct Mesh
@@ -84,6 +85,7 @@ namespace parser
         int material_id;
         Face indices;
         Vec3f normal;
+        bool isNormalInversed;
     };
 
     struct Sphere
@@ -141,6 +143,7 @@ namespace parser
         bool isShadow(Vec3f intersectionPoint, Vec3f lightSourceLocation);
         void computeNormal(Triangle &triangle);
         void computeNormal(Face &face);
+        void backFaceCulling(Ray &r);
     };
 }
 

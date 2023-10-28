@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include "parser.h"
 #include "ppm.h"
 #include <chrono> // TODO: remove this before submission
@@ -52,17 +53,36 @@ namespace parser {
         }
         return {};
     }
+    void Scene::backFaceCulling(Ray &ray){
+        for (Mesh &mesh: meshes){
+            for (Face &face: mesh.faces){
+                if (ray.direction.dot(face.normal) > 0.00001){
+                    face.isNormalInversed = true;
+                }else{
+                    face.isNormalInversed = false;
+                }
+            }
+        }
+
+        for (Triangle &triangle: triangles){
+            if (ray.direction.dot(triangle.normal) > 0.00001){
+                triangle.isNormalInversed = true;
+            }else{
+                triangle.isNormalInversed = false;
+            }
+        }
+    }
     void Scene::computeNormal(parser::Face &face) {
         Vec3f faceA = vertex_data[face.v0_id - 1];
         Vec3f faceB = vertex_data[face.v1_id - 1];
         Vec3f faceC = vertex_data[face.v2_id - 1];
-        face.normal = (faceA - faceB).cross(faceA - faceC);
+        face.normal = ((faceB - faceA).cross(faceC - faceA)).normalized();
     }
     void Scene::computeNormal(parser::Triangle &triangle) {
         Vec3f triangleA = vertex_data[triangle.indices.v0_id - 1];
         Vec3f triangleB = vertex_data[triangle.indices.v1_id - 1];
         Vec3f triangleC = vertex_data[triangle.indices.v2_id - 1];
-        triangle.normal = (triangleA - triangleB).cross(triangleA - triangleC);
+        triangle.normal = ((triangleB - triangleA).cross(triangleC - triangleA)).normalized();
     }
 
     Ray::Ray(): depth(0) {}
@@ -129,7 +149,7 @@ namespace parser {
         float delta;
         float singleRoot, doubleRootFirst, doubleRootSecond;
 
-        std::vector<Vec3f> vertexData = this->vertex_data;
+        std::vector<Vec3f> vertexData = vertex_data;
 
         Vec3f sphereCenter = vertexData[s.center_vertex_id - 1];
 
@@ -138,7 +158,11 @@ namespace parser {
         C = (ray.origin - sphereCenter).dot(ray.origin - sphereCenter) - s.radius * s.radius;
 
         delta = B*B - 4*A*C;
-        if (delta == 0){
+
+        if (delta < 0){
+            return -1;
+        }
+        if (abs(delta) < 0.0001){
             singleRoot = -B / (2*A);
             return singleRoot;
         }else if (delta > 0){
@@ -150,24 +174,19 @@ namespace parser {
     }
 
     float Scene::intersect(parser::Triangle triangle, parser::Ray ray) const {
+        if (triangle.isNormalInversed && ray.depth == 0){
+            return -1;
+        }
         float Beta, Gamma, t;
         float detOfA, detForBeta, detForGamma, detFort;
 
-        std::vector<Vec3f> vertexData = this->vertex_data;
+        std::vector<Vec3f> vertexData = vertex_data;
         Vec3f triangleA = vertexData[triangle.indices.v0_id - 1];
         Vec3f triangleB = vertexData[triangle.indices.v1_id - 1];
         Vec3f triangleC = vertexData[triangle.indices.v2_id - 1];
 
-
-/*
-        float dotRN = triangle.normal.dot(ray.direction); // dot product of the triangle normal and the ray
-        if (dotRN < 0){ // back-face culling
-            return -1;
-        }
-*/
-
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
-        if (detOfA == 0){
+        if (abs(detOfA) < 0.0001){
             return -1;
         }
 
@@ -185,23 +204,19 @@ namespace parser {
     }
 
     float Scene::intersect(parser::Face face, parser::Ray ray) const {
+        if (face.isNormalInversed && ray.depth == 0){
+            return -1;
+        }
         float Beta, Gamma, t;
         float detOfA, detForBeta, detForGamma, detFort;
 
-        std::vector<Vec3f> vertexData = this->vertex_data;
+        std::vector<Vec3f> vertexData = vertex_data;
         Vec3f triangleA = vertexData[face.v0_id - 1];
         Vec3f triangleB = vertexData[face.v1_id - 1];
         Vec3f triangleC = vertexData[face.v2_id - 1];
 
-/*
-        float dotRN = face.normal.dot(ray.direction); // dot product of the triangle normal and the ray
-        if (dotRN < 0){ // back-face culling
-            return -1;
-        }
-*/
-
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
-        if (detOfA == 0){
+        if (abs(detOfA) < 0.0001){
             return -1;
         }
 
@@ -230,7 +245,7 @@ namespace parser {
 
         for (Sphere sphere: spheres){
             float sphereIntersection = intersect(sphere, ray);
-            if (sphereIntersection < minT && sphereIntersection >= this->shadow_ray_epsilon){
+            if (sphereIntersection < minT && sphereIntersection >= 0.001){
                 hitPoint.t = sphereIntersection;
                 hitPoint.materialId = sphere.material_id;
                 hitPoint.hitPoint = ray.origin + ray.direction * sphereIntersection;
@@ -241,7 +256,7 @@ namespace parser {
 
         for (Triangle triangle: triangles){
             float triangleIntersection = intersect(triangle, ray);
-            if (triangleIntersection < minT && triangleIntersection >= this->shadow_ray_epsilon){
+            if (triangleIntersection < minT && triangleIntersection >= 0.001){
                 hitPoint.t = triangleIntersection;
                 hitPoint.materialId = triangle.material_id;
                 hitPoint.hitPoint = ray.origin + ray.direction * triangleIntersection;
@@ -255,7 +270,7 @@ namespace parser {
         for (const Mesh& mesh: meshes){
             for (Face face: mesh.faces){
                 float faceIntersection = intersect(face, ray);
-                if (faceIntersection < minT && faceIntersection >= this->shadow_ray_epsilon){
+                if (faceIntersection < minT && faceIntersection >= 0.001){
                     hitPoint.t = faceIntersection;
                     hitPoint.materialId = mesh.material_id;
                     hitPoint.hitPoint = ray.origin + ray.direction * faceIntersection;
@@ -275,6 +290,10 @@ namespace parser {
         ray.direction = (lightSourceLocation - intersectionPoint).normalized();
         HitPoint hitPoint = closestIntersection(ray);
 
+        Vec3f V = hitPoint.hitPoint - lightSourceLocation;
+        if (V.dot(ray.direction) > 0){
+            return false;
+        }
         if (hitPoint.t != -1){
             return true;
         }
@@ -289,19 +308,18 @@ namespace parser {
         HitPoint hitPoint = closestIntersection(ray);
         float t = hitPoint.t;
 
-        if (t > shadow_ray_epsilon){
+        if (t > 0.0000001){
             Vec3f shading = applyShading(hitPoint, cam, ray);
             return shading.clamp();
         }
-        else{
-            if (ray.depth == 0)
-                return this->background_color * 1.0f; // No intersection, return bgcolor
-            else{
-                return {0, 0, 0} ;
-            }
+        else if (ray.depth == 0) {
+            return background_color * 1.0f; // No intersection, return bgcolor
         }
-
+        else{
+            return {0, 0, 0} ;
+        }
     }
+
 
     Vec3f Scene::applyShading(HitPoint hitPoint, Camera &cam, Ray &ray){
         Material material = materials[hitPoint.materialId- 1];
@@ -365,6 +383,7 @@ namespace parser {
                 for (int i = 0; i < imageWidth; i++) {
                     Ray myRay = generateRay(i, j, cam);
                     myRay.depth = 0;
+                    backFaceCulling(myRay);
                     Vec3f rayColor = computeColor(myRay, cam);
 
                     image[k++] = (unsigned char) rayColor.x;
