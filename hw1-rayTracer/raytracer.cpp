@@ -179,7 +179,7 @@ namespace parser {
         }
         float Beta, Gamma, t;
         float detOfA, detForBeta, detForGamma, detFort;
-
+        const float EPSILON = 0.0001;
         std::vector<Vec3f> vertexData = vertex_data;
         Vec3f triangleA = vertexData[triangle.indices.v0_id - 1];
         Vec3f triangleB = vertexData[triangle.indices.v1_id - 1];
@@ -197,7 +197,7 @@ namespace parser {
         Beta = detForBeta / detOfA;
         Gamma = detForGamma / detOfA;
         t = detFort / detOfA;
-        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > this->shadow_ray_epsilon){
+        if (Beta + Gamma <= 1 + EPSILON && Beta >= -EPSILON && Gamma >= -EPSILON && t > EPSILON){
             return t;
         }
         return -1;
@@ -209,7 +209,7 @@ namespace parser {
         }
         float Beta, Gamma, t;
         float detOfA, detForBeta, detForGamma, detFort;
-
+        const float EPSILON = 0.0001;
         std::vector<Vec3f> vertexData = vertex_data;
         Vec3f triangleA = vertexData[face.v0_id - 1];
         Vec3f triangleB = vertexData[face.v1_id - 1];
@@ -227,7 +227,7 @@ namespace parser {
         Beta = detForBeta / detOfA;
         Gamma = detForGamma / detOfA;
         t = detFort / detOfA;
-        if (Beta + Gamma <= 1 && Beta >= 0 && Gamma >= 0 && t > this->shadow_ray_epsilon){
+        if (Beta + Gamma <= 1 + EPSILON && Beta >= -EPSILON && Gamma >= -EPSILON && t > EPSILON){
             return t;
         }
         return -1;
@@ -308,7 +308,7 @@ namespace parser {
         HitPoint hitPoint = closestIntersection(ray);
         float t = hitPoint.t;
 
-        if (t > 0.0000001){
+        if (t > 0.0001){
             Vec3f shading = applyShading(hitPoint, cam, ray);
             return shading.clamp();
         }
