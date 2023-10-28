@@ -52,8 +52,18 @@ namespace parser {
         }
         return {};
     }
-    Vec3f Scene::computeNormal(parser::Face &face) {}
-    Vec3f Scene::computeNormal(parser::Triangle &triangle) {}
+    void Scene::computeNormal(parser::Face &face) {
+        Vec3f faceA = vertex_data[face.v0_id - 1];
+        Vec3f faceB = vertex_data[face.v1_id - 1];
+        Vec3f faceC = vertex_data[face.v2_id - 1];
+        face.normal = (faceA - faceB).cross(faceA - faceC);
+    }
+    void Scene::computeNormal(parser::Triangle &triangle) {
+        Vec3f triangleA = vertex_data[triangle.indices.v0_id - 1];
+        Vec3f triangleB = vertex_data[triangle.indices.v1_id - 1];
+        Vec3f triangleC = vertex_data[triangle.indices.v2_id - 1];
+        triangle.normal = (triangleA - triangleB).cross(triangleA - triangleC);
+    }
 
     Ray::Ray(): depth(0) {}
     Ray::Ray(Vec3f origin, Vec3f direction): origin(origin), direction(direction), depth(0) {}
@@ -148,12 +158,13 @@ namespace parser {
         Vec3f triangleB = vertexData[triangle.indices.v1_id - 1];
         Vec3f triangleC = vertexData[triangle.indices.v2_id - 1];
 
-        Vec3f normal = (triangleA - triangleB).cross(triangleA - triangleC);
 
-        float dotRN = normal.dot(ray.direction); // dot product of the triangle normal and the ray
+/*
+        float dotRN = triangle.normal.dot(ray.direction); // dot product of the triangle normal and the ray
         if (dotRN < 0){ // back-face culling
             return -1;
         }
+*/
 
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
         if (detOfA == 0){
@@ -182,13 +193,12 @@ namespace parser {
         Vec3f triangleB = vertexData[face.v1_id - 1];
         Vec3f triangleC = vertexData[face.v2_id - 1];
 
-
-        Vec3f normal = (triangleA - triangleB).cross(triangleA - triangleC);
-
-        float dotRN = normal.dot(ray.direction); // dot product of the triangle normal and the ray
+/*
+        float dotRN = face.normal.dot(ray.direction); // dot product of the triangle normal and the ray
         if (dotRN < 0){ // back-face culling
             return -1;
         }
+*/
 
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
         if (detOfA == 0){
@@ -235,11 +245,9 @@ namespace parser {
                 hitPoint.t = triangleIntersection;
                 hitPoint.materialId = triangle.material_id;
                 hitPoint.hitPoint = ray.origin + ray.direction * triangleIntersection;
-                Vec3f triangleA = vertex_data[triangle.indices.v0_id - 1];
-                Vec3f triangleB = vertex_data[triangle.indices.v1_id - 1];
-                Vec3f triangleC = vertex_data[triangle.indices.v2_id - 1];
 
-                hitPoint.normal = (triangleA - triangleB).cross(triangleA - triangleC);
+
+                hitPoint.normal = triangle.normal;
                 minT = triangleIntersection;
             }
         }
@@ -252,11 +260,7 @@ namespace parser {
                     hitPoint.materialId = mesh.material_id;
                     hitPoint.hitPoint = ray.origin + ray.direction * faceIntersection;
 
-                    Vec3f faceA = vertex_data[face.v0_id - 1];
-                    Vec3f faceB = vertex_data[face.v1_id - 1];
-                    Vec3f faceC = vertex_data[face.v2_id - 1];
-
-                    hitPoint.normal = (faceA - faceB).cross(faceA - faceC);
+                    hitPoint.normal = face.normal;
                     minT = faceIntersection;
                 }
             }
@@ -284,12 +288,9 @@ namespace parser {
 
         HitPoint hitPoint = closestIntersection(ray);
         float t = hitPoint.t;
-        Material material = materials[hitPoint.materialId- 1];
 
         if (t > shadow_ray_epsilon){
             Vec3f shading = applyShading(hitPoint, cam, ray);
-
-            // Sum up all components
             return shading.clamp();
         }
         else{
@@ -341,12 +342,24 @@ namespace parser {
         return totalDiffuse + totalSpecular + totalMirror + ambient;
     }
 
-    void Scene::renderScene(unsigned char* image) {
+    void Scene::renderScene() {
         auto start = std::chrono::high_resolution_clock::now(); //TODO: remove this
+
+        for (Triangle &triangle : triangles){
+            computeNormal(triangle);
+        }
+        for (Mesh &mesh : meshes){
+            for (Face &face : mesh.faces){
+                computeNormal(face);
+            }
+        }
 
         for (Camera cam : this->cameras){
             int imageWidth = cam.image_width;
             int imageHeight = cam.image_height;
+            const char* imageName = cam.image_name.c_str();
+            unsigned char* image = new unsigned char [imageWidth * imageHeight * 3];
+
             int k = 0;
             for (int j = 0; j < imageHeight; j++) {
                 for (int i = 0; i < imageWidth; i++) {
@@ -372,6 +385,8 @@ namespace parser {
 
                 }
             }
+            write_ppm(imageName, image, imageWidth, imageHeight);
+
         }
     }
 }
@@ -386,15 +401,7 @@ int main(int argc, char* argv[])
     parser::Scene scene;
 
     scene.loadFromXml(argv[1]);
-    parser::Camera cam = scene.cameras[0];
-    int width = cam.image_width, height = cam.image_height;
 
-    unsigned char* image = new unsigned char [width * height * 3];
-
-    scene.renderScene(image);
-
-    const char* imageName = cam.image_name.c_str();
-
-    write_ppm(imageName, image, width, height);
+    scene.renderScene();
 
 }

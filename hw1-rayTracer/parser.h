@@ -70,6 +70,7 @@ namespace parser
         int v0_id;
         int v1_id;
         int v2_id;
+        Vec3f normal;
     };
 
     struct Mesh
@@ -82,6 +83,7 @@ namespace parser
     {
         int material_id;
         Face indices;
+        Vec3f normal;
     };
 
     struct Sphere
@@ -135,10 +137,10 @@ namespace parser
         Vec3f computeColor(Ray&ray, Camera &cam);
         Vec3f applyShading(HitPoint hitPoint,  Camera &cam, Ray &ray);
         HitPoint closestIntersection(Ray ray);
-        void renderScene(unsigned char* image);
+        void renderScene();
         bool isShadow(Vec3f intersectionPoint, Vec3f lightSourceLocation);
-        Vec3f computeNormal(Triangle &triangle);
-        Vec3f computeNormal(Face &face);
+        void computeNormal(Triangle &triangle);
+        void computeNormal(Face &face);
     };
 }
 
