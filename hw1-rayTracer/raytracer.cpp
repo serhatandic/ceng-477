@@ -105,8 +105,11 @@ namespace parser {
         imageCenter = camPosition + gaze * camImageDistance;
         topLeftCorner = imageCenter + u * left + v * top;
         tipOfRay = topLeftCorner + u*distFromLeft + v * (-distFromTop);
-
-        return {camPosition, (tipOfRay + camPosition * -1).normalized()};
+        Ray ray;
+        ray.origin = camPosition;
+        ray.direction = (tipOfRay + camPosition * -1).normalized();
+        ray.depth = 0;
+        return ray;
     }
 
     float Scene::intersect(parser::Sphere s, parser::Ray ray) const {
@@ -276,7 +279,7 @@ namespace parser {
         return false;
     }
 
-    Vec3f Scene::computeColor(Ray ray, Camera &cam) {
+    Vec3f Scene::computeColor(Ray &ray, Camera &cam) {
         if (ray.depth > max_recursion_depth){
             return {0, 0, 0};
         }
@@ -285,44 +288,44 @@ namespace parser {
         float t = hitPoint.t;
         Material material = materials[hitPoint.materialId- 1];
 
-        if (t < 0){
+        if (t > shadow_ray_epsilon){
+            Vec3f shading = applyShading(hitPoint, cam, ray);
+
+            // Sum up all components
+            return shading.clamp();
+        }
+        else{
             if (ray.depth == 0)
                 return this->background_color * 1.0f; // No intersection, return bgcolor
             else{
-                return {0, 0, 0};
+                return {0, 0, 0} ;
             }
         }
-        Vec3f shading = applyShading(hitPoint, cam, ray);
 
-        Vec3f ambient = (ambient_light * material.ambient);
-
-        // Sum up all components
-        Vec3f result = shading + ambient;
-        if (isnan(result.x) || isnan(result.y) || isnan(result.z))
-            std::cout << result.x << " " << result.y << " " << result.z << std::endl;
-        return result.clamp();
     }
 
-    Vec3f Scene::applyShading(HitPoint hitPoint, Camera &cam, Ray ray){
+    Vec3f Scene::applyShading(HitPoint hitPoint, Camera &cam, Ray &ray){
+        if (ray.depth > 0)
+            std::cout << ray.depth << std::endl;
         Material material = materials[hitPoint.materialId- 1];
         Vec3f normal = hitPoint.normal.normalized();
         Vec3f intersectionPoint = hitPoint.hitPoint;
-        Vec3f totalSpecular, totalDiffuse;
+        Vec3f totalSpecular, totalDiffuse, totalMirror;
         Vec3f totalColor = {0,0,0};
+        Vec3f ambient = (ambient_light * material.ambient);
 
         bool  isMirror = material.is_mirror;
         if (isMirror){
             Ray reflectionRay;
-            Vec3f reflectionRayDirection = ray.direction * -1 + normal*(normal.dot(ray.direction))*2;
+            Vec3f reflectionRayDirection = ((ray.direction).normalized() + normal*(normal.dot(ray.direction * -1))*2).normalized();
             reflectionRay.origin = intersectionPoint;
             reflectionRay.direction = reflectionRayDirection;
             reflectionRay.depth = ray.depth + 1;
-            totalColor = totalColor + computeColor(reflectionRay, cam) * material.mirror;
+            totalMirror = totalMirror + computeColor(reflectionRay, cam) * material.mirror;
         }
         for (PointLight pointLight: point_lights){
             if (isShadow(intersectionPoint, pointLight.position)){
-                totalColor = {0,0,0};
-                break;
+                continue;
             }
             Vec3f lightDir = (pointLight.position - intersectionPoint).normalized();
             Vec3f viewDir = (cam.position - intersectionPoint).normalized(); // Assuming camera is in the scene
@@ -342,7 +345,7 @@ namespace parser {
             totalColor = totalColor + totalSpecular + totalDiffuse;
         }
 
-        return totalColor;
+        return totalColor + totalMirror + ambient;
     }
 
     void Scene::renderScene(unsigned char* image) {
@@ -355,6 +358,7 @@ namespace parser {
             for (int j = 0; j < imageHeight; j++) {
                 for (int i = 0; i < imageWidth; i++) {
                     Ray myRay = generateRay(i, j, cam);
+                    myRay.depth = 0;
                     Vec3f rayColor = computeColor(myRay, cam);
 
                     image[k++] = (unsigned char) rayColor.x;

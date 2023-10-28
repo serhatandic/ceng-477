@@ -132,8 +132,8 @@ namespace parser
         [[nodiscard]] float intersect(Sphere s, parser::Ray ray) const;
         [[nodiscard]] float intersect(Triangle t, parser::Ray ray) const;
         [[nodiscard]] float intersect(parser::Face face, parser::Ray ray) const;
-        Vec3f computeColor(Ray ray, Camera &cam);
-        Vec3f applyShading(HitPoint hitPoint,  Camera &cam, Ray ray);
+        Vec3f computeColor(Ray&ray, Camera &cam);
+        Vec3f applyShading(HitPoint hitPoint,  Camera &cam, Ray &ray);
         HitPoint closestIntersection(Ray ray);
         void renderScene(unsigned char* image);
         bool isShadow(Vec3f intersectionPoint, Vec3f lightSourceLocation);
