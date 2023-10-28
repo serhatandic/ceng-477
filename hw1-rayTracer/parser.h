@@ -137,6 +137,8 @@ namespace parser
         HitPoint closestIntersection(Ray ray);
         void renderScene(unsigned char* image);
         bool isShadow(Vec3f intersectionPoint, Vec3f lightSourceLocation);
+        Vec3f computeNormal(Triangle &triangle);
+        Vec3f computeNormal(Face &face);
     };
 }
 

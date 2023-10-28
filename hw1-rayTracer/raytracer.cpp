@@ -52,6 +52,8 @@ namespace parser {
         }
         return {};
     }
+    Vec3f Scene::computeNormal(parser::Face &face) {}
+    Vec3f Scene::computeNormal(parser::Triangle &triangle) {}
 
     Ray::Ray(): depth(0) {}
     Ray::Ray(Vec3f origin, Vec3f direction): origin(origin), direction(direction), depth(0) {}
@@ -145,7 +147,6 @@ namespace parser {
         Vec3f triangleA = vertexData[triangle.indices.v0_id - 1];
         Vec3f triangleB = vertexData[triangle.indices.v1_id - 1];
         Vec3f triangleC = vertexData[triangle.indices.v2_id - 1];
-/*
 
         Vec3f normal = (triangleA - triangleB).cross(triangleA - triangleC);
 
@@ -153,7 +154,6 @@ namespace parser {
         if (dotRN < 0){ // back-face culling
             return -1;
         }
-*/
 
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
         if (detOfA == 0){
@@ -183,14 +183,12 @@ namespace parser {
         Vec3f triangleC = vertexData[face.v2_id - 1];
 
 
-/*
         Vec3f normal = (triangleA - triangleB).cross(triangleA - triangleC);
 
         float dotRN = normal.dot(ray.direction); // dot product of the triangle normal and the ray
         if (dotRN < 0){ // back-face culling
             return -1;
         }
-*/
 
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
         if (detOfA == 0){
@@ -305,13 +303,10 @@ namespace parser {
     }
 
     Vec3f Scene::applyShading(HitPoint hitPoint, Camera &cam, Ray &ray){
-        if (ray.depth > 0)
-            std::cout << ray.depth << std::endl;
         Material material = materials[hitPoint.materialId- 1];
         Vec3f normal = hitPoint.normal.normalized();
         Vec3f intersectionPoint = hitPoint.hitPoint;
         Vec3f totalSpecular, totalDiffuse, totalMirror;
-        Vec3f totalColor = {0,0,0};
         Vec3f ambient = (ambient_light * material.ambient);
 
         bool  isMirror = material.is_mirror;
@@ -341,11 +336,9 @@ namespace parser {
 
             totalSpecular = specular + totalSpecular;
             totalDiffuse = diffuse + totalDiffuse;
-
-            totalColor = totalColor + totalSpecular + totalDiffuse;
         }
 
-        return totalColor + totalMirror + ambient;
+        return totalDiffuse + totalSpecular + totalMirror + ambient;
     }
 
     void Scene::renderScene(unsigned char* image) {
@@ -373,9 +366,8 @@ namespace parser {
                         double percentageComplete = (k / (double) (imageWidth * imageHeight * 3)) * 100;
                         double totalEstimatedTime = secondsElapsed / (percentageComplete / 100);
                         double secondsRemaining = totalEstimatedTime - secondsElapsed;
-/*
                         std::cout << "Progress: " << percentageComplete << "%" << std::endl;
-                        std::cout << "Estimated remaining time: " << secondsRemaining / 60 << "min" << std::endl;*/
+                        std::cout << "Estimated remaining time: " << secondsRemaining / 60 << "min" << std::endl;
                     }
 
                 }
