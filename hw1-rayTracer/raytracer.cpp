@@ -148,9 +148,8 @@ namespace parser {
         float delta;
         float singleRoot, doubleRootFirst, doubleRootSecond;
 
-        std::vector<Vec3f> vertexData = vertex_data;
 
-        Vec3f sphereCenter = vertexData[s.center_vertex_id - 1];
+        Vec3f sphereCenter = vertex_data[s.center_vertex_id - 1];
 
         A = ray.direction.dot(ray.direction);
         B = 2*ray.direction.dot(ray.origin - sphereCenter);
@@ -179,10 +178,9 @@ namespace parser {
         float Beta, Gamma, t;
         float detOfA, detForBeta, detForGamma, detFort;
         const float EPSILON = 0.0001;
-        std::vector<Vec3f> vertexData = vertex_data;
-        Vec3f triangleA = vertexData[triangle.indices.v0_id - 1];
-        Vec3f triangleB = vertexData[triangle.indices.v1_id - 1];
-        Vec3f triangleC = vertexData[triangle.indices.v2_id - 1];
+        Vec3f triangleA = vertex_data[triangle.indices.v0_id - 1];
+        Vec3f triangleB = vertex_data[triangle.indices.v1_id - 1];
+        Vec3f triangleC = vertex_data[triangle.indices.v2_id - 1];
 
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
         if (abs(detOfA) < 0.0001){
@@ -209,10 +207,9 @@ namespace parser {
         float Beta, Gamma, t;
         float detOfA, detForBeta, detForGamma, detFort;
         const float EPSILON = 0.0001;
-        std::vector<Vec3f> vertexData = vertex_data;
-        Vec3f triangleA = vertexData[face.v0_id - 1];
-        Vec3f triangleB = vertexData[face.v1_id - 1];
-        Vec3f triangleC = vertexData[face.v2_id - 1];
+        Vec3f triangleA = vertex_data[face.v0_id - 1];
+        Vec3f triangleB = vertex_data[face.v1_id - 1];
+        Vec3f triangleC = vertex_data[face.v2_id - 1];
 
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
         if (abs(detOfA) < 0.0001){
