@@ -183,9 +183,6 @@ namespace parser {
         Vec3f triangleC = vertex_data[triangle.indices.v2_id - 1];
 
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
-        if (abs(detOfA) < 0.0001){
-            return -1;
-        }
 
         detForBeta = parser::Vec3f::determinant(triangleA - ray.origin, triangleA - triangleC, ray.direction);
         detForGamma = parser::Vec3f::determinant(triangleA - triangleB, triangleA - ray.origin, ray.direction);
@@ -212,9 +209,6 @@ namespace parser {
         Vec3f triangleC = vertex_data[face.v2_id - 1];
 
         detOfA = parser::Vec3f::determinant(triangleA - triangleB, triangleA - triangleC, ray.direction);
-        if (abs(detOfA) < 0.0001){
-            return -1;
-        }
 
         detForBeta = parser::Vec3f::determinant(triangleA - ray.origin, triangleA - triangleC, ray.direction);
         detForGamma = parser::Vec3f::determinant(triangleA - triangleB, triangleA - ray.origin, ray.direction);
