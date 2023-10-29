@@ -17,7 +17,7 @@ namespace parser
         Vec3f operator-(const Vec3f& other) const;
         Vec3f operator*(float scalar) const;
         Vec3f operator*(const Vec3f& other) const;
-        Vec3f operator/(const float other) const;
+        Vec3f operator/(const float &other) const;
         [[nodiscard]] float dot(const Vec3f& other) const;
         [[nodiscard]] Vec3f cross(const Vec3f& other) const;
         [[nodiscard]] Vec3f normalized() const;
@@ -132,15 +132,15 @@ namespace parser
         std::vector<Sphere> spheres;
         //Functions
         void loadFromXml(const std::string &filepath);
-        Ray generateRay(int i, int j, Camera &cam); // ray goes through i,j th pixel
-        [[nodiscard]] float intersect(Sphere s, parser::Ray ray) const;
-        [[nodiscard]] float intersect(Triangle t, parser::Ray ray) const;
-        [[nodiscard]] float intersect(parser::Face face, parser::Ray ray) const;
+        Ray generateRay(int &i, int &j, Camera &cam); // ray goes through i,j th pixel
+        [[nodiscard]] float intersect(Sphere &s, parser::Ray &ray) const;
+        [[nodiscard]] float intersect(Triangle &t, parser::Ray &ray) const;
+        [[nodiscard]] float intersect(parser::Face &face, parser::Ray &ray) const;
         Vec3f computeColor(Ray&ray, Camera &cam);
-        Vec3f applyShading(HitPoint hitPoint,  Camera &cam, Ray &ray);
-        HitPoint closestIntersection(Ray ray);
+        Vec3f applyShading(HitPoint &hitPoint,  Camera &cam, Ray &ray);
+        HitPoint closestIntersection(Ray &ray, bool shadowTest);
         void renderScene();
-        bool isShadow(Vec3f intersectionPoint, Vec3f lightSourceLocation);
+        bool isShadow(Vec3f &intersectionPoint, Vec3f &lightSourceLocation);
         void computeNormal(Triangle &triangle);
         void computeNormal(Face &face);
         void backFaceCulling(Ray &r);
