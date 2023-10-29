@@ -3,5 +3,6 @@ project(c_c__)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(c_c__ hw1-rayTracer/main.cpp
-        hw1-rayTracer/rayTracer.cpp)
+add_executable(c_c__
+        hw1-rayTracer/raytracer.cpp
+        hw1-rayTracer/parser.cpp)
